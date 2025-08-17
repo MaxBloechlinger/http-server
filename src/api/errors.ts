@@ -1,15 +1,23 @@
-import type { Request, Response, NextFunction } from "express";
+export class BadRequestError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
 
-import { respondWithJSON, respondWithError } from "./json.js";
+export class UserNotAuthenticatedError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
 
-export function errorHandler(
-  err: Error,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  console.error("Uh oh, spaghetti-o");
-  res.status(500).json({
-    error: "Something went wrong on our end",
-  });
+export class UserForbiddenError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+export class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
 }
