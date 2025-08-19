@@ -13,8 +13,8 @@ import {
 } from "./api/middleware.js";
 import {
   handlerChirpsCreate,
-  handlerChirpsGetAll,
-  handlerChirpsGetSingle,
+  handlerChirpsGet,
+  handlerChirpsRetrieve,
 } from "./api/chirps.js";
 import { config } from "./config.js";
 import { handlerUsersCreate } from "./api/users.js";
@@ -46,13 +46,11 @@ app.post("/api/users", (req, res, next) => {
 app.post("/api/chirps", (req, res, next) => {
   Promise.resolve(handlerChirpsCreate(req, res)).catch(next);
 });
-
 app.get("/api/chirps", (req, res, next) => {
-  Promise.resolve(handlerChirpsGetAll(req, res)).catch(next);
+  Promise.resolve(handlerChirpsRetrieve(req, res)).catch(next);
 });
-
-app.get("/api/chirps/:chirpID", (req, res, next) => {
-  Promise.resolve(handlerChirpsGetSingle(req, res)).catch(next);
+app.get("/api/chirps/:chirpId", (req, res, next) => {
+  Promise.resolve(handlerChirpsGet(req, res)).catch(next);
 });
 
 app.use(errorMiddleWare);

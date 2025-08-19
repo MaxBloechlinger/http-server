@@ -23,9 +23,6 @@ export const chirps = pgTable("chirps", {
   userId: uuid("user_id")
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
-  hashedPassword: varchar("hashed_password", { length: 255 })
-    .notNull()
-    .default("unset"),
 });
 
 export type NewChirp = typeof chirps.$inferInsert;
