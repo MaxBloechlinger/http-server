@@ -6,10 +6,14 @@ import { UserNotAuthenticatedError } from "./errors.js";
 import type { Request, Response } from "express";
 import type { UserResponse } from "./users.js";
 
+import { makeJWT } from "../auth.js";
+import { config } from "../config.js";
+
 export async function handlerLogin(req: Request, res: Response) {
   type parameters = {
     password: string;
     email: string;
+    expiresInSeconds?: number;
   };
 
   const params: parameters = req.body;
@@ -27,10 +31,19 @@ export async function handlerLogin(req: Request, res: Response) {
     throw new UserNotAuthenticatedError("invalid username or password");
   }
 
+  const maxExpiration = config.jwt.defaultDuration;
+  let expirationTime = maxExpiration;
+
+  if (params.expiresInSeconds) {
+    expirationTime = Math.min(params.expiresInSeconds, maxExpiration);
+  }
+  const token = makeJWT(user.id, expirationTime, config.jwt.secret);
+
   respondWithJSON(res, 200, {
     id: user.id,
     email: user.email,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-  } satisfies UserResponse);
+    token: token,
+  } satisfies UserResponse & { token: string });
 }

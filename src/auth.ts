@@ -1,5 +1,11 @@
 import bcrypt from "bcrypt";
 import jwt, { JwtPayload } from "jsonwebtoken";
+import { Request } from "express";
+import {
+  NotFoundError,
+  UserNotAuthenticatedError,
+  BadRequestError,
+} from "./api/errors.js";
 
 export async function hashPassword(password: string) {
   const saltRounds = 10;
@@ -36,4 +42,21 @@ export function validateJWT(tokenString: string, secret: string): string {
   } catch (err) {
     throw new Error("Invalid or expired token");
   }
+}
+
+function extractBearerToken(header: string) {
+  const res: string[] = header.split(" ");
+  if (res[0] == "Bearer" && res.length >= 2) {
+    return res[1];
+  } else {
+    throw new BadRequestError("Malformed authorization header");
+  }
+}
+
+export function getBearerToken(req: Request) {
+  const authHeader = req.get("Authorization");
+  if (!authHeader) {
+    throw new BadRequestError("Malformed authorization header");
+  }
+  return extractBearerToken(authHeader);
 }
