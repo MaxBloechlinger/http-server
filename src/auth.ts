@@ -1,11 +1,12 @@
 import bcrypt from "bcrypt";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import type { JwtPayload } from "jsonwebtoken";
+
+import { BadRequestError, UserNotAuthenticatedError } from "./api/errors.js";
 import { Request } from "express";
-import {
-  NotFoundError,
-  UserNotAuthenticatedError,
-  BadRequestError,
-} from "./api/errors.js";
+
+const TOKEN_ISSUER = "chirpy";
 
 export async function hashPassword(password: string) {
   const saltRounds = 10;
@@ -16,41 +17,42 @@ export async function checkPasswordHash(password: string, hash: string) {
   return bcrypt.compare(password, hash);
 }
 
-export function makeJWT(
-  userID: string,
-  expiresIn: number,
-  secret: string
-): string {
-  const iat = Math.floor(Date.now() / 1000);
-  const exp = iat + expiresIn;
-  const payload = {
-    iss: "chirpy",
-    sub: userID,
-    iat,
-    exp,
-  };
-  return jwt.sign(payload, secret);
+type payload = Pick<JwtPayload, "iss" | "sub" | "iat" | "exp">;
+
+export function makeJWT(userID: string, expiresIn: number, secret: string) {
+  const issuedAt = Math.floor(Date.now() / 1000);
+  const expiresAt = issuedAt + expiresIn;
+  const token = jwt.sign(
+    {
+      iss: TOKEN_ISSUER,
+      sub: userID,
+      iat: issuedAt,
+      exp: expiresAt,
+    } satisfies payload,
+    secret,
+    { algorithm: "HS256" }
+  );
+
+  return token;
 }
 
-export function validateJWT(tokenString: string, secret: string): string {
+export function validateJWT(tokenString: string, secret: string) {
+  let decoded: payload;
   try {
-    const decoded = jwt.verify(tokenString, secret) as JwtPayload;
-    if (!decoded.sub) {
-      throw new Error("No subject in token");
-    }
-    return decoded.sub as string;
-  } catch (err) {
-    throw new Error("Invalid or expired token");
+    decoded = jwt.verify(tokenString, secret) as JwtPayload;
+  } catch (e) {
+    throw new UserNotAuthenticatedError("Invalid token");
   }
-}
 
-function extractBearerToken(header: string) {
-  const res: string[] = header.split(" ");
-  if (res[0] == "Bearer" && res.length >= 2) {
-    return res[1];
-  } else {
-    throw new BadRequestError("Malformed authorization header");
+  if (decoded.iss !== TOKEN_ISSUER) {
+    throw new UserNotAuthenticatedError("Invalid issuer");
   }
+
+  if (!decoded.sub) {
+    throw new UserNotAuthenticatedError("No user ID in token");
+  }
+
+  return decoded.sub;
 }
 
 export function getBearerToken(req: Request) {
@@ -58,5 +60,18 @@ export function getBearerToken(req: Request) {
   if (!authHeader) {
     throw new BadRequestError("Malformed authorization header");
   }
+
   return extractBearerToken(authHeader);
+}
+
+export function extractBearerToken(header: string) {
+  const splitAuth = header.split(" ");
+  if (splitAuth.length < 2 || splitAuth[0] !== "Bearer") {
+    throw new BadRequestError("Malformed authorization header");
+  }
+  return splitAuth[1];
+}
+
+export function makeRefreshToken() {
+  return crypto.randomBytes(32).toString("hex");
 }
